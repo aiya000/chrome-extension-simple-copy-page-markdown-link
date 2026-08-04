@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Copy as Markdown Link",
+  "version": "1.0.0",
+  "description": "Copy the current page as a Markdown link [title](url) to the clipboard.",
+  "permissions": [
+    "contextMenus",
+    "scripting",
+    "activeTab"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
