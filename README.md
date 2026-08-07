@@ -1,4 +1,4 @@
-# Chrome Extension - Only Copy Page Markdown Link
+# Chrome Extension - Simple Copy Page Markdown Link
 
 最も単純なプラグイン。
 現在開いているページを `[ページタイトル](URL)` の Markdown 形式でクリップボードにコピーする**だけの** Chrome 拡張機能です。
@@ -17,8 +17,3 @@
 4. **「パッケージ化されていない拡張機能を読み込む」** をクリックする
 5. このリポジトリのフォルダを選択する
 6. 拡張機能一覧に「Copy as Markdown Link」が追加されれば完了
-
-## ファイル構成
-
-- `manifest.json` — Manifest V3 設定ファイル
-- `background.js` — Service Worker（コンテキストメニュー登録・コピー処理）
