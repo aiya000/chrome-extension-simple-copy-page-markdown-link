@@ -1,13 +1,46 @@
+// メニュー ID と、それぞれがどのタイトル種別をコピーするかの対応。
+// - "page": document.title をそのまま使う（既存の挙動）
+// - "issue": GitHub Issue ページのタイトル（"... · Issue #N · owner/repo" から抽出）
+// - "pr":    GitHub Pull Request ページのタイトル
+const MENU_ISSUE_ID = "copy-markdown-link-issue";
+const MENU_PR_ID = "copy-markdown-link-pr";
+const MENU_PAGE_ID = "copy-markdown-link";
+
+const MENU_KIND_BY_ID = {
+  [MENU_PAGE_ID]: "page",
+  [MENU_ISSUE_ID]: "issue",
+  [MENU_PR_ID]: "pr",
+};
+
 chrome.runtime.onInstalled.addListener(() => {
+  // 既存メニュー（全ページ）
   chrome.contextMenus.create({
-    id: "copy-markdown-link",
+    id: MENU_PAGE_ID,
     title: "Copy as Markdown Link",
     contexts: ["page", "link"],
+  });
+
+  // GitHub Issue ページでのみ表示される。documentUrlPatterns により Chrome が
+  // 自動で表示を出し分けるため、タブ URL の監視は不要。
+  chrome.contextMenus.create({
+    id: MENU_ISSUE_ID,
+    title: "Copy as Markdown Link (Issue Title)",
+    contexts: ["page", "link"],
+    documentUrlPatterns: ["https://github.com/*/issues/*"],
+  });
+
+  // GitHub Pull Request ページでのみ表示される。
+  chrome.contextMenus.create({
+    id: MENU_PR_ID,
+    title: "Copy as Markdown Link (PR Title)",
+    contexts: ["page", "link"],
+    documentUrlPatterns: ["https://github.com/*/pull/*"],
   });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId !== "copy-markdown-link") return;
+  const kind = MENU_KIND_BY_ID[info.menuItemId];
+  if (!kind) return;
 
   if (!tab || tab.id == null) {
     console.error("[Copy as Markdown Link] No active tab to copy from.");
@@ -18,6 +51,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     {
       target: { tabId: tab.id },
       func: copyMarkdownLink,
+      args: [kind],
     },
     () => {
       // executeScript 自体が失敗した場合（chrome:// ページ、PDF、Web Store など）
@@ -31,8 +65,21 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   );
 });
 
-function copyMarkdownLink() {
-  const title = document.title.replace(/\[/g, "\\[").replace(/\]/g, "\\]");
+function copyMarkdownLink(kind) {
+  // GitHub の <title> は "<タイトル> · Issue #N · owner/repo" /
+  // "<タイトル> · Pull Request #N · owner/repo" の形式。
+  // 末尾の " · Issue #N · owner/repo" 部分を取り除いて純粋なタイトルを得る。
+  const extractGitHubTitle = () => {
+    const raw = document.title;
+    const marker = / · (?:Issue|Pull Request) #\d+ · /;
+    const idx = raw.search(marker);
+    return idx === -1 ? raw : raw.slice(0, idx);
+  };
+
+  const rawTitle =
+    kind === "issue" || kind === "pr" ? extractGitHubTitle() : document.title;
+
+  const title = rawTitle.replace(/\[/g, "\\[").replace(/\]/g, "\\]");
   const url = location.href;
   const markdown = `[${title}](${url})`;
 

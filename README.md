@@ -9,6 +9,20 @@
 
 コピー成功時は画面右上にトースト通知が表示されます。
 
+### GitHub の Issue / Pull Request ページ
+
+GitHub の Issue / Pull Request ページでは、右クリックメニューに次の項目が追加で表示されます。
+
+- Issue ページ（`https://github.com/*/issues/*`）: **「Copy as Markdown Link (Issue Title)」**
+- Pull Request ページ（`https://github.com/*/pull/*`）: **「Copy as Markdown Link (PR Title)」**
+
+これらは、ページタイトル末尾の `· Issue #N · owner/repo` のような接尾辞を取り除いた**純粋な Issue / PR タイトル**をリンクテキストにしてコピーします。
+
+例:
+
+- ページタイトル: `Fix the login bug · Issue #42 · owner/repo`
+- コピーされる内容: `[Fix the login bug](https://github.com/owner/repo/issues/42)`
+
 ## インストール手順
 
 1. このリポジトリをクローン（またはダウンロード）する
