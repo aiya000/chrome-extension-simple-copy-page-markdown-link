@@ -1,21 +1,36 @@
-// メニュー ID と、それぞれがどのタイトル種別をコピーするかの対応。
+// 各メニューがコピーするタイトル種別。
 // - "page": document.title をそのまま使う（既存の挙動）
 // - "issue": GitHub Issue ページのタイトル（"... · Issue #N · owner/repo" から抽出）
 // - "pr":    GitHub Pull Request ページのタイトル
-const MENU_ISSUE_ID = "copy-markdown-link-issue";
-const MENU_PR_ID = "copy-markdown-link-pr";
-const MENU_PAGE_ID = "copy-markdown-link";
+//
+// 各メニューは「リンクあり（[title](url)）」と「リンクなし（title のみ）」の
+// 2 系統を持つ。withLink フラグでどちらをコピーするか切り替える。
+const MENU_ISSUE_LINK_ID = "copy-markdown-link-issue";
+const MENU_PR_LINK_ID = "copy-markdown-link-pr";
+const MENU_PAGE_LINK_ID = "copy-markdown-link";
+const MENU_ISSUE_TITLE_ID = "copy-markdown-title-issue";
+const MENU_PR_TITLE_ID = "copy-markdown-title-pr";
+const MENU_PAGE_TITLE_ID = "copy-markdown-title";
 
-const MENU_KIND_BY_ID = {
-  [MENU_PAGE_ID]: "page",
-  [MENU_ISSUE_ID]: "issue",
-  [MENU_PR_ID]: "pr",
+// 各メニュー ID -> { kind, withLink } の対応。
+const MENU_CONFIG_BY_ID = {
+  [MENU_PAGE_LINK_ID]: { kind: "page", withLink: true },
+  [MENU_ISSUE_LINK_ID]: { kind: "issue", withLink: true },
+  [MENU_PR_LINK_ID]: { kind: "pr", withLink: true },
+  [MENU_PAGE_TITLE_ID]: { kind: "page", withLink: false },
+  [MENU_ISSUE_TITLE_ID]: { kind: "issue", withLink: false },
+  [MENU_PR_TITLE_ID]: { kind: "pr", withLink: false },
 };
 
+const ISSUE_URL_PATTERNS = ["https://github.com/*/issues/*"];
+const PR_URL_PATTERNS = ["https://github.com/*/pull/*"];
+
 chrome.runtime.onInstalled.addListener(() => {
+  // --- リンクあり（[title](url)）---
+
   // 既存メニュー（全ページ）
   chrome.contextMenus.create({
-    id: MENU_PAGE_ID,
+    id: MENU_PAGE_LINK_ID,
     title: "Copy as Markdown Link",
     contexts: ["page", "link"],
   });
@@ -23,24 +38,49 @@ chrome.runtime.onInstalled.addListener(() => {
   // GitHub Issue ページでのみ表示される。documentUrlPatterns により Chrome が
   // 自動で表示を出し分けるため、タブ URL の監視は不要。
   chrome.contextMenus.create({
-    id: MENU_ISSUE_ID,
+    id: MENU_ISSUE_LINK_ID,
     title: "Copy as Markdown Link (Issue Title)",
     contexts: ["page", "link"],
-    documentUrlPatterns: ["https://github.com/*/issues/*"],
+    documentUrlPatterns: ISSUE_URL_PATTERNS,
   });
 
   // GitHub Pull Request ページでのみ表示される。
   chrome.contextMenus.create({
-    id: MENU_PR_ID,
+    id: MENU_PR_LINK_ID,
     title: "Copy as Markdown Link (PR Title)",
     contexts: ["page", "link"],
-    documentUrlPatterns: ["https://github.com/*/pull/*"],
+    documentUrlPatterns: PR_URL_PATTERNS,
+  });
+
+  // --- リンクなし（タイトル文字列のみ）---
+
+  // 全ページ。タイトルだけをコピーする。
+  chrome.contextMenus.create({
+    id: MENU_PAGE_TITLE_ID,
+    title: "Copy as Markdown Title",
+    contexts: ["page", "link"],
+  });
+
+  // GitHub Issue ページでのみ表示される。
+  chrome.contextMenus.create({
+    id: MENU_ISSUE_TITLE_ID,
+    title: "Copy as Markdown (Issue Title)",
+    contexts: ["page", "link"],
+    documentUrlPatterns: ISSUE_URL_PATTERNS,
+  });
+
+  // GitHub Pull Request ページでのみ表示される。
+  chrome.contextMenus.create({
+    id: MENU_PR_TITLE_ID,
+    title: "Copy as Markdown (PR Title)",
+    contexts: ["page", "link"],
+    documentUrlPatterns: PR_URL_PATTERNS,
   });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  const kind = MENU_KIND_BY_ID[info.menuItemId];
-  if (!kind) return;
+  const config = MENU_CONFIG_BY_ID[info.menuItemId];
+  if (!config) return;
 
   if (!tab || tab.id == null) {
     console.error("[Copy as Markdown Link] No active tab to copy from.");
@@ -51,7 +91,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     {
       target: { tabId: tab.id },
       func: copyMarkdownLink,
-      args: [kind],
+      args: [config.kind, config.withLink],
     },
     () => {
       // executeScript 自体が失敗した場合（chrome:// ページ、PDF、Web Store など）
@@ -65,7 +105,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   );
 });
 
-function copyMarkdownLink(kind) {
+function copyMarkdownLink(kind, withLink) {
   // GitHub の <title> は "<タイトル> · Issue #N · owner/repo" /
   // "<タイトル> · Pull Request #N · owner/repo" の形式。
   // 末尾の " · Issue #N · owner/repo" 部分を取り除いて純粋なタイトルを得る。
@@ -81,7 +121,8 @@ function copyMarkdownLink(kind) {
 
   const title = rawTitle.replace(/\[/g, "\\[").replace(/\]/g, "\\]");
   const url = location.href;
-  const markdown = `[${title}](${url})`;
+  // withLink が false のときはタイトル文字列だけをコピーする。
+  const markdown = withLink ? `[${title}](${url})` : title;
 
   const showToast = (text, isError) => {
     const toast = document.createElement("div");
@@ -162,10 +203,15 @@ function copyMarkdownLink(kind) {
     showToast("コピーに失敗しました。ページを一度クリックしてから再試行してください。", true);
   };
 
+  // リンクあり/なしで成功時のメッセージを出し分ける。
+  const successMessage = withLink
+    ? "Markdownリンクをコピーしました。"
+    : "タイトルをコピーしました。";
+
   // navigator.clipboard が使えない環境（非セキュアコンテキスト等）はフォールバックへ
   if (!navigator.clipboard || !navigator.clipboard.writeText) {
     if (fallbackCopy()) {
-      showToast("Markdownリンクをコピーしました。", false);
+      showToast(successMessage, false);
     } else {
       onError("clipboard API unavailable and execCommand failed");
     }
@@ -174,12 +220,12 @@ function copyMarkdownLink(kind) {
 
   navigator.clipboard.writeText(markdown).then(
     () => {
-      showToast("Markdownリンクをコピーしました。", false);
+      showToast(successMessage, false);
     },
     (err) => {
       // 失敗したらフォールバックを試す
       if (fallbackCopy()) {
-        showToast("Markdownリンクをコピーしました。", false);
+        showToast(successMessage, false);
       } else {
         onError(err);
       }

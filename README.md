@@ -9,19 +9,35 @@
 
 コピー成功時は画面右上にトースト通知が表示されます。
 
+### リンクあり / リンクなし
+
+各メニューには「リンクあり」と「リンクなし」の 2 系統があります。
+
+- **Copy as Markdown Link**: `[ページタイトル](URL)` の Markdown リンク形式でコピーします
+- **Copy as Markdown Title**: ページタイトルの**文字列だけ**をコピーします（URL なし）
+
 ### GitHub の Issue / Pull Request ページ
 
 GitHub の Issue / Pull Request ページでは、右クリックメニューに次の項目が追加で表示されます。
 
-- Issue ページ（`https://github.com/*/issues/*`）: **「Copy as Markdown Link (Issue Title)」**
-- Pull Request ページ（`https://github.com/*/pull/*`）: **「Copy as Markdown Link (PR Title)」**
+- Issue ページ（`https://github.com/*/issues/*`）
+    - **「Copy as Markdown Link (Issue Title)」**（リンクあり）
+    - **「Copy as Markdown (Issue Title)」**（リンクなし・タイトルのみ）
+- Pull Request ページ（`https://github.com/*/pull/*`）
+    - **「Copy as Markdown Link (PR Title)」**（リンクあり）
+    - **「Copy as Markdown (PR Title)」**（リンクなし・タイトルのみ）
 
-これらは、ページタイトル末尾の `· Issue #N · owner/repo` のような接尾辞を取り除いた**純粋な Issue / PR タイトル**をリンクテキストにしてコピーします。
+これらは、ページタイトル末尾の `· Issue #N · owner/repo` のような接尾辞を取り除いた**純粋な Issue / PR タイトル**を使います。
 
-例:
+例（リンクあり）:
 
 - ページタイトル: `Fix the login bug · Issue #42 · owner/repo`
 - コピーされる内容: `[Fix the login bug](https://github.com/owner/repo/issues/42)`
+
+例（リンクなし）:
+
+- ページタイトル: `Fix the login bug · Issue #42 · owner/repo`
+- コピーされる内容: `Fix the login bug`
 
 ## インストール手順
 
